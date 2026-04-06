@@ -42,7 +42,6 @@ export default function ServicesGroup({
               body: JSON.stringify({ grid: updated }),
             });
           }
-          await fetch("/api/revalidate");
           window.location.reload();
         }
       } catch {

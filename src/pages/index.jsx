@@ -224,12 +224,16 @@ function Home({ initialSettings }) {
 
   useEffect(() => {
     setSettings(initialSettings);
-    if (initialSettings.gridLayouts && !gridLayouts) {
-      setGridLayouts(initialSettings.gridLayouts);
-    }
-  }, [initialSettings, setSettings, gridLayouts, setGridLayouts]);
+  }, [initialSettings, setSettings]);
 
   const { data: services, mutate: mutateServices } = useSWR("/api/services");
+  const { data: savedGridLayouts } = useSWR(settings.enableEditMode ? "/api/settings/layout" : null);
+
+  useEffect(() => {
+    if (savedGridLayouts && !gridLayouts) {
+      setGridLayouts(savedGridLayouts);
+    }
+  }, [savedGridLayouts, gridLayouts, setGridLayouts]);
   const { data: bookmarks } = useSWR("/api/bookmarks");
   const { data: widgets } = useSWR("/api/widgets");
 
@@ -383,7 +387,7 @@ function Home({ initialSettings }) {
         id: `${WIDGET_PREFIX}${w.type}_${i}`,
         widget: w,
       }));
-      const layouts = gridLayouts || settings.gridLayouts || generateDefaultLayouts(allGroups, dividers, widgetItems);
+      const layouts = gridLayouts || generateDefaultLayouts(allGroups, dividers, widgetItems);
       return (
         <>
           {tabs.length > 0 && (
