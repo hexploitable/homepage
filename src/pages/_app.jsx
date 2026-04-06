@@ -1,11 +1,13 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import { appWithTranslation } from "next-i18next";
 import Head from "next/head";
+import "react-grid-layout/css/styles.css";
 import "styles/globals.css";
 import "styles/manrope.css";
 import "styles/theme.css";
 import { SWRConfig } from "swr";
 import { ColorProvider } from "utils/contexts/color";
+import { EditModeProvider } from "utils/contexts/edit-mode";
 import { SettingsProvider } from "utils/contexts/settings";
 import { TabProvider } from "utils/contexts/tab";
 import { ThemeProvider } from "utils/contexts/theme";
@@ -84,9 +86,11 @@ function MyApp({ Component, pageProps }) {
       <ColorProvider>
         <ThemeProvider>
           <SettingsProvider>
-            <TabProvider>
-              <Component {...pageProps} />
-            </TabProvider>
+            <EditModeProvider>
+              <TabProvider>
+                <Component {...pageProps} />
+              </TabProvider>
+            </EditModeProvider>
           </SettingsProvider>
         </ThemeProvider>
       </ColorProvider>
