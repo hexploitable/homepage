@@ -7,47 +7,57 @@ const BREAKPOINTS = { lg: 1200, md: 996, sm: 768, xs: 480 };
 const COLS = { lg: 12, md: 8, sm: 4, xs: 2 };
 const ROW_HEIGHT = 100;
 
-export function generateDefaultLayouts(groups, dividers = []) {
-  const allItems = [...groups.map((g) => ({ id: g.name, isGroup: true, group: g })), ...dividers.map((d) => ({ id: d.id, isGroup: false }))];
+export const WIDGET_PREFIX = "__widget_";
 
-  const defaultW = 4;
-  const defaultH = 3;
-  const itemsPerRow = Math.floor(COLS.lg / defaultW);
+export function isWidget(id) {
+  return id?.startsWith(WIDGET_PREFIX);
+}
 
-  let groupIdx = 0;
-  const lg = allItems.map((item) => {
-    if (!item.isGroup) {
-      const y = groupIdx > 0 ? Math.floor(groupIdx / itemsPerRow) * defaultH + defaultH : 0;
-      return { i: item.id, x: 0, y, w: COLS.lg, h: 1, minW: COLS.lg, maxW: COLS.lg, minH: 1, maxH: 1 };
-    }
-    const pos = {
-      i: item.id,
-      x: (groupIdx % itemsPerRow) * defaultW,
-      y: Math.floor(groupIdx / itemsPerRow) * defaultH,
-      w: item.group?.services ? defaultW : 3,
-      h: defaultH,
-      minW: 2,
-      minH: 2,
-    };
-    groupIdx += 1;
-    return pos;
-  });
+export function generateDefaultLayouts(groups, dividers = [], widgetItems = []) {
+  const allItems = [
+    ...widgetItems.map((w) => ({ id: w.id, type: "widget", defaultW: 3, defaultH: 1 })),
+    ...groups.map((g) => ({ id: g.name, type: "group", defaultW: g.services ? 4 : 3, defaultH: 3 })),
+    ...dividers.map((d) => ({ id: d.id, type: "divider" })),
+  ];
 
-  const makeSimple = (cols, items) =>
-    items.map((item, i) => {
-      if (!item.isGroup) {
-        return { i: item.id, x: 0, y: i * 3, w: cols, h: 1, minW: cols, maxW: cols, minH: 1, maxH: 1 };
+  function layoutForBreakpoint(cols) {
+    let curX = 0;
+    let curY = 0;
+    let rowMaxH = 0;
+
+    return allItems.map((item) => {
+      if (item.type === "divider") {
+        if (curX > 0) {
+          curY += rowMaxH;
+          curX = 0;
+          rowMaxH = 0;
+        }
+        const entry = { i: item.id, x: 0, y: curY, w: cols, h: 1, minW: cols, maxW: cols, minH: 1, maxH: 1 };
+        curY += 1;
+        return entry;
       }
-      const perRow = Math.floor(cols / 4) || 1;
-      const gi = items.slice(0, i).filter((it) => it.isGroup).length;
-      return { i: item.id, x: (gi % perRow) * 4, y: Math.floor(gi / perRow) * 3, w: Math.min(4, cols), h: 3, minW: 2, minH: 2 };
+
+      const w = Math.min(item.defaultW, cols);
+      const h = item.defaultH;
+
+      if (curX + w > cols) {
+        curY += rowMaxH;
+        curX = 0;
+        rowMaxH = 0;
+      }
+
+      const entry = { i: item.id, x: curX, y: curY, w, h, minW: 1, minH: 1 };
+      curX += w;
+      rowMaxH = Math.max(rowMaxH, h);
+      return entry;
     });
+  }
 
   return {
-    lg,
-    md: makeSimple(COLS.md, allItems),
-    sm: makeSimple(COLS.sm, allItems),
-    xs: makeSimple(COLS.xs, allItems),
+    lg: layoutForBreakpoint(COLS.lg),
+    md: layoutForBreakpoint(COLS.md),
+    sm: layoutForBreakpoint(COLS.sm),
+    xs: layoutForBreakpoint(COLS.xs),
   };
 }
 
@@ -81,6 +91,8 @@ export default function GridLayoutWrapper({
   dividers = [],
   onDividerLabelChange,
   onDividerRemove,
+  widgetItems = [],
+  renderWidget,
 }) {
   const containerRef = useRef(null);
   const width = useWidth(containerRef);
@@ -101,10 +113,24 @@ export default function GridLayoutWrapper({
     return map;
   }, [dividers]);
 
+  const widgetMap = useMemo(() => {
+    const map = {};
+    widgetItems.forEach((w) => {
+      map[w.id] = w;
+    });
+    return map;
+  }, [widgetItems]);
+
   const layoutKeys = useMemo(() => {
-    if (!layouts?.lg) return [...groups.map((g) => g.name), ...dividers.map((d) => d.id)];
+    if (!layouts?.lg) {
+      return [
+        ...widgetItems.map((w) => w.id),
+        ...groups.map((g) => g.name),
+        ...dividers.map((d) => d.id),
+      ];
+    }
     return layouts.lg.map((item) => item.i);
-  }, [layouts, groups, dividers]);
+  }, [layouts, groups, dividers, widgetItems]);
 
   const handleLayoutChange = useCallback(
     (_currentLayout, allLayouts) => onLayoutChange(allLayouts),
@@ -143,6 +169,21 @@ export default function GridLayoutWrapper({
                     onLabelChange={onDividerLabelChange}
                     onRemove={onDividerRemove}
                   />
+                </div>
+              );
+            }
+
+            if (isWidget(name)) {
+              const widgetItem = widgetMap[name];
+              if (!widgetItem || !renderWidget) return null;
+              return (
+                <div key={name} className={classNames("relative", editMode && "grid-item-edit")}>
+                  {editMode && (
+                    <div className="grid-drag-handle absolute top-0 left-0 right-0 h-6 cursor-grab active:cursor-grabbing z-40 flex items-center justify-center">
+                      <div className="w-8 h-1 rounded-full bg-theme-500/40" />
+                    </div>
+                  )}
+                  <div className="h-full overflow-auto">{renderWidget(widgetItem.widget)}</div>
                 </div>
               );
             }

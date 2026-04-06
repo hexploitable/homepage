@@ -2,7 +2,7 @@
 import classNames from "classnames";
 import BookmarksGroup from "components/bookmarks/group";
 import EditToggle from "components/edit/edit-toggle";
-import GridLayoutWrapper, { generateDefaultLayouts } from "components/edit/grid-layout";
+import GridLayoutWrapper, { generateDefaultLayouts, WIDGET_PREFIX } from "components/edit/grid-layout";
 import ErrorBoundary from "components/errorboundry";
 import QuickLaunch from "components/quicklaunch";
 import ServicesGroup from "components/services/group";
@@ -373,7 +373,11 @@ function Home({ initialSettings }) {
 
     // Grid layout mode (when enableEditMode is on)
     if (settings.enableEditMode && allGroups.length > 0) {
-      const layouts = gridLayouts || generateDefaultLayouts(allGroups, dividers);
+      const widgetItems = (widgets || []).map((w, i) => ({
+        id: `${WIDGET_PREFIX}${w.type}_${i}`,
+        widget: w,
+      }));
+      const layouts = gridLayouts || generateDefaultLayouts(allGroups, dividers, widgetItems);
       return (
         <>
           {tabs.length > 0 && (
@@ -403,6 +407,10 @@ function Home({ initialSettings }) {
             dividers={dividers}
             onDividerLabelChange={handleDividerLabelChange}
             onDividerRemove={handleDividerRemove}
+            widgetItems={widgetItems}
+            renderWidget={(widget) => (
+              <Widget widget={widget} style={{ header: headerStyle, isRightAligned: false, cardBlur: settings.cardBlur }} />
+            )}
           />
         </>
       );
@@ -518,50 +526,52 @@ function Home({ initialSettings }) {
           isOpen={searching}
           setSearching={setSearching}
         />
-        <div
-          id="information-widgets"
-          className={classNames(
-            "flex flex-row flex-wrap justify-between z-20",
-            headerStyles[headerStyle],
-            settings.cardBlur !== undefined &&
-              headerStyle === "boxed" &&
-              `backdrop-blur${settings.cardBlur.length ? "-" : ""}${settings.cardBlur}`,
-          )}
-        >
-          <div id="widgets-wrap" className={classNames("flex flex-row w-full flex-wrap justify-between gap-x-2")}>
-            {widgets && (
-              <>
-                {widgets
-                  .filter((widget) => !rightAlignedWidgets.includes(widget.type))
-                  .map((widget, i) => (
-                    <Widget
-                      key={i}
-                      widget={widget}
-                      style={{ header: headerStyle, isRightAligned: false, cardBlur: settings.cardBlur }}
-                    />
-                  ))}
-
-                <div
-                  id="information-widgets-right"
-                  className={classNames(
-                    "m-auto flex flex-wrap grow sm:basis-auto justify-between md:justify-end",
-                    "m-auto flex flex-wrap grow sm:basis-auto justify-between md:justify-end gap-x-2",
-                  )}
-                >
+        {!settings.enableEditMode && (
+          <div
+            id="information-widgets"
+            className={classNames(
+              "flex flex-row flex-wrap justify-between z-20",
+              headerStyles[headerStyle],
+              settings.cardBlur !== undefined &&
+                headerStyle === "boxed" &&
+                `backdrop-blur${settings.cardBlur.length ? "-" : ""}${settings.cardBlur}`,
+            )}
+          >
+            <div id="widgets-wrap" className={classNames("flex flex-row w-full flex-wrap justify-between gap-x-2")}>
+              {widgets && (
+                <>
                   {widgets
-                    .filter((widget) => rightAlignedWidgets.includes(widget.type))
+                    .filter((widget) => !rightAlignedWidgets.includes(widget.type))
                     .map((widget, i) => (
                       <Widget
                         key={i}
                         widget={widget}
-                        style={{ header: headerStyle, isRightAligned: true, cardBlur: settings.cardBlur }}
+                        style={{ header: headerStyle, isRightAligned: false, cardBlur: settings.cardBlur }}
                       />
                     ))}
-                </div>
-              </>
-            )}
+
+                  <div
+                    id="information-widgets-right"
+                    className={classNames(
+                      "m-auto flex flex-wrap grow sm:basis-auto justify-between md:justify-end",
+                      "m-auto flex flex-wrap grow sm:basis-auto justify-between md:justify-end gap-x-2",
+                    )}
+                  >
+                    {widgets
+                      .filter((widget) => rightAlignedWidgets.includes(widget.type))
+                      .map((widget, i) => (
+                        <Widget
+                          key={i}
+                          widget={widget}
+                          style={{ header: headerStyle, isRightAligned: true, cardBlur: settings.cardBlur }}
+                        />
+                      ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {servicesAndBookmarksGroups}
 
