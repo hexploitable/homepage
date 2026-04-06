@@ -19,7 +19,7 @@ import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { BiError } from "react-icons/bi";
 import useSWR, { SWRConfig } from "swr";
 import { ColorContext } from "utils/contexts/color";
-import { EditModeContext, saveGridLayouts } from "utils/contexts/edit-mode";
+import { EditModeContext, saveDividers, saveGridLayouts } from "utils/contexts/edit-mode";
 import { SettingsContext } from "utils/contexts/settings";
 import { TabContext } from "utils/contexts/tab";
 import { ThemeContext } from "utils/contexts/theme";
@@ -218,7 +218,7 @@ function Home({ initialSettings }) {
   const { color, setColor } = useContext(ColorContext);
   const { settings, setSettings } = useContext(SettingsContext);
   const { activeTab, setActiveTab } = useContext(TabContext);
-  const { editMode, gridLayouts, setGridLayouts } = useContext(EditModeContext);
+  const { editMode, gridLayouts, setGridLayouts, dividers, setDividers } = useContext(EditModeContext);
   const { asPath } = useRouter();
 
   useEffect(() => {
@@ -336,6 +336,24 @@ function Home({ initialSettings }) {
     [editMode, setGridLayouts],
   );
 
+  const handleDividerLabelChange = useCallback(
+    (id, label) => {
+      const updated = dividers.map((d) => (d.id === id ? { ...d, label } : d));
+      setDividers(updated);
+      saveDividers(updated);
+    },
+    [dividers, setDividers],
+  );
+
+  const handleDividerRemove = useCallback(
+    (id) => {
+      const updated = dividers.filter((d) => d.id !== id);
+      setDividers(updated);
+      saveDividers(updated);
+    },
+    [dividers, setDividers],
+  );
+
   const servicesAndBookmarksGroups = useMemo(() => {
     const tabGroupFilter = (g) => g && [activeTab, ""].includes(slugifyAndEncode(settings.layout?.[g.name]?.tab));
     const undefinedGroupFilter = (g) => settings.layout?.[g.name] === undefined;
@@ -355,7 +373,7 @@ function Home({ initialSettings }) {
 
     // Grid layout mode (when enableEditMode is on)
     if (settings.enableEditMode && allGroups.length > 0) {
-      const layouts = gridLayouts || generateDefaultLayouts(allGroups);
+      const layouts = gridLayouts || generateDefaultLayouts(allGroups, dividers);
       return (
         <>
           {tabs.length > 0 && (
@@ -382,6 +400,9 @@ function Home({ initialSettings }) {
             onLayoutChange={handleGridLayoutChange}
             editMode={editMode}
             renderGroup={renderGroup}
+            dividers={dividers}
+            onDividerLabelChange={handleDividerLabelChange}
+            onDividerRemove={handleDividerRemove}
           />
         </>
       );
@@ -443,7 +464,10 @@ function Home({ initialSettings }) {
     initialSettings.layout,
     editMode,
     gridLayouts,
+    dividers,
     handleGridLayoutChange,
+    handleDividerLabelChange,
+    handleDividerRemove,
     renderGroup,
   ]);
 

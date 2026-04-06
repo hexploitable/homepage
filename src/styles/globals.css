@@ -115,3 +115,8 @@ dialog ::-webkit-scrollbar {
 .edit-grid-active .react-resizable-handle::after {
   border-color: rgba(100, 160, 240, 0.6);
 }
+
+.grid-item-divider {
+  border: 1px dashed rgba(100, 160, 240, 0.25);
+  border-radius: 0.375rem;
+}
