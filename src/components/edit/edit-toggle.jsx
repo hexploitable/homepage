@@ -50,6 +50,8 @@ export default function EditToggle() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ grid: gridLayouts }),
         });
+        // Trigger ISR revalidation so the static page picks up the new layout
+        await fetch("/api/revalidate");
       } catch {
         // ignore save errors
       }
