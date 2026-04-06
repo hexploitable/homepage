@@ -1,6 +1,8 @@
 /* eslint-disable react/no-array-index-key */
 import classNames from "classnames";
 import BookmarksGroup from "components/bookmarks/group";
+import EditToggle from "components/edit/edit-toggle";
+import GridLayoutWrapper, { generateDefaultLayouts, WIDGET_PREFIX } from "components/edit/grid-layout";
 import ErrorBoundary from "components/errorboundry";
 import QuickLaunch from "components/quicklaunch";
 import ServicesGroup from "components/services/group";
@@ -13,10 +15,11 @@ import dynamic from "next/dynamic";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import Script from "next/script";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { BiError } from "react-icons/bi";
 import useSWR, { SWRConfig } from "swr";
 import { ColorContext } from "utils/contexts/color";
+import { EditModeContext, saveDividers, saveGridLayouts } from "utils/contexts/edit-mode";
 import { SettingsContext } from "utils/contexts/settings";
 import { TabContext } from "utils/contexts/tab";
 import { ThemeContext } from "utils/contexts/theme";
@@ -215,6 +218,7 @@ function Home({ initialSettings }) {
   const { color, setColor } = useContext(ColorContext);
   const { settings, setSettings } = useContext(SettingsContext);
   const { activeTab, setActiveTab } = useContext(TabContext);
+  const { editMode, gridLayouts, setGridLayouts, dividers, setDividers } = useContext(EditModeContext);
   const { asPath } = useRouter();
 
   useEffect(() => {
@@ -292,6 +296,64 @@ function Home({ initialSettings }) {
     }
   });
 
+  const renderGroup = useCallback(
+    (group) => {
+      if (group.services) {
+        return (
+          <ServicesGroup
+            key={group.name}
+            group={group}
+            layout={settings.layout?.[group.name]}
+            maxGroupColumns={settings.fiveColumns ? 5 : settings.maxGroupColumns}
+            disableCollapse={settings.disableCollapse}
+            useEqualHeights={settings.useEqualHeights}
+            groupsInitiallyCollapsed={settings.groupsInitiallyCollapsed}
+          />
+        );
+      }
+      return (
+        <BookmarksGroup
+          key={group.name}
+          bookmarks={group}
+          layout={settings.layout?.[group.name]}
+          disableCollapse={settings.disableCollapse}
+          maxGroupColumns={settings.maxBookmarkGroupColumns ?? settings.maxGroupColumns}
+          groupsInitiallyCollapsed={settings.groupsInitiallyCollapsed}
+          bookmarksStyle={settings.bookmarksStyle}
+        />
+      );
+    },
+    [settings, settings.layout],
+  );
+
+  const handleGridLayoutChange = useCallback(
+    (allLayouts) => {
+      if (editMode) {
+        setGridLayouts(allLayouts);
+        saveGridLayouts(allLayouts);
+      }
+    },
+    [editMode, setGridLayouts],
+  );
+
+  const handleDividerLabelChange = useCallback(
+    (id, label) => {
+      const updated = dividers.map((d) => (d.id === id ? { ...d, label } : d));
+      setDividers(updated);
+      saveDividers(updated);
+    },
+    [dividers, setDividers],
+  );
+
+  const handleDividerRemove = useCallback(
+    (id) => {
+      const updated = dividers.filter((d) => d.id !== id);
+      setDividers(updated);
+      saveDividers(updated);
+    },
+    [dividers, setDividers],
+  );
+
   const servicesAndBookmarksGroups = useMemo(() => {
     const tabGroupFilter = (g) => g && [activeTab, ""].includes(slugifyAndEncode(settings.layout?.[g.name]?.tab));
     const undefinedGroupFilter = (g) => settings.layout?.[g.name] === undefined;
@@ -301,13 +363,60 @@ function Home({ initialSettings }) {
       .filter(tabGroupFilter);
 
     if (!settings.layout && JSON.stringify(settings.layout) !== JSON.stringify(initialSettings.layout)) {
-      // wait for settings to populate (if different from initial settings), otherwise all the widgets will be requested initially even if we are on a single tab
       return <div />;
     }
 
     const serviceGroups = services?.filter(tabGroupFilter).filter(undefinedGroupFilter);
     const bookmarkGroups = bookmarks.filter(tabGroupFilter).filter(undefinedGroupFilter);
 
+    const allGroups = [...layoutGroups, ...(serviceGroups || []), ...(bookmarkGroups || [])].filter(Boolean);
+
+    // Grid layout mode (when enableEditMode is on)
+    if (settings.enableEditMode && allGroups.length > 0) {
+      const widgetItems = (widgets || []).map((w, i) => ({
+        id: `${WIDGET_PREFIX}${w.type}_${i}`,
+        widget: w,
+      }));
+      const layouts = gridLayouts || generateDefaultLayouts(allGroups, dividers, widgetItems);
+      return (
+        <>
+          {tabs.length > 0 && (
+            <div key="tabs" id="tabs" className="m-5 sm:m-9 sm:mt-4 sm:mb-0">
+              <ul
+                className={classNames(
+                  "sm:flex rounded-md bg-theme-100/20 dark:bg-white/5",
+                  settings.cardBlur !== undefined &&
+                    `backdrop-blur${settings.cardBlur.length ? "-" : ""}${settings.cardBlur}`,
+                )}
+                id="myTab"
+                data-tabs-toggle="#myTabContent"
+                role="tablist"
+              >
+                {tabs.map((tab) => (
+                  <Tab key={tab} tab={tab} />
+                ))}
+              </ul>
+            </div>
+          )}
+          <GridLayoutWrapper
+            groups={allGroups}
+            layouts={layouts}
+            onLayoutChange={handleGridLayoutChange}
+            editMode={editMode}
+            renderGroup={renderGroup}
+            dividers={dividers}
+            onDividerLabelChange={handleDividerLabelChange}
+            onDividerRemove={handleDividerRemove}
+            widgetItems={widgetItems}
+            renderWidget={(widget) => (
+              <Widget widget={widget} style={{ header: headerStyle, isRightAligned: false, cardBlur: settings.cardBlur }} />
+            )}
+          />
+        </>
+      );
+    }
+
+    // Original flex-wrap layout (no enableEditMode)
     return (
       <>
         {tabs.length > 0 && (
@@ -330,57 +439,17 @@ function Home({ initialSettings }) {
         )}
         {layoutGroups.length > 0 && (
           <div key="layoutGroups" id="layout-groups" className="flex flex-wrap m-4 sm:m-8 sm:mt-4 items-start mb-2">
-            {layoutGroups.map((group) =>
-              group.services ? (
-                <ServicesGroup
-                  key={group.name}
-                  group={group}
-                  layout={settings.layout?.[group.name]}
-                  maxGroupColumns={settings.fiveColumns ? 5 : settings.maxGroupColumns}
-                  disableCollapse={settings.disableCollapse}
-                  useEqualHeights={settings.useEqualHeights}
-                  groupsInitiallyCollapsed={settings.groupsInitiallyCollapsed}
-                />
-              ) : (
-                <BookmarksGroup
-                  key={group.name}
-                  bookmarks={group}
-                  layout={settings.layout?.[group.name]}
-                  disableCollapse={settings.disableCollapse}
-                  maxGroupColumns={settings.maxBookmarkGroupColumns ?? settings.maxGroupColumns}
-                  groupsInitiallyCollapsed={settings.groupsInitiallyCollapsed}
-                />
-              ),
-            )}
+            {layoutGroups.map((group) => renderGroup(group))}
           </div>
         )}
         {serviceGroups?.length > 0 && (
           <div key="services" id="services" className="flex flex-wrap m-4 sm:m-8 sm:mt-4 items-start mb-2">
-            {serviceGroups.map((group) => (
-              <ServicesGroup
-                key={group.name}
-                group={group}
-                layout={settings.layout?.[group.name]}
-                maxGroupColumns={settings.fiveColumns ? 5 : settings.maxGroupColumns}
-                disableCollapse={settings.disableCollapse}
-                groupsInitiallyCollapsed={settings.groupsInitiallyCollapsed}
-              />
-            ))}
+            {serviceGroups.map((group) => renderGroup(group))}
           </div>
         )}
         {bookmarkGroups?.length > 0 && (
           <div key="bookmarks" id="bookmarks" className="flex flex-wrap m-4 sm:m-8 sm:mt-4 items-start mb-2">
-            {bookmarkGroups.map((group) => (
-              <BookmarksGroup
-                key={group.name}
-                bookmarks={group}
-                layout={settings.layout?.[group.name]}
-                disableCollapse={settings.disableCollapse}
-                maxGroupColumns={settings.maxBookmarkGroupColumns ?? settings.maxGroupColumns}
-                groupsInitiallyCollapsed={settings.groupsInitiallyCollapsed}
-                bookmarksStyle={settings.bookmarksStyle}
-              />
-            ))}
+            {bookmarkGroups.map((group) => renderGroup(group))}
           </div>
         )}
       </>
@@ -399,7 +468,15 @@ function Home({ initialSettings }) {
     settings.cardBlur,
     settings.groupsInitiallyCollapsed,
     settings.bookmarksStyle,
+    settings.enableEditMode,
     initialSettings.layout,
+    editMode,
+    gridLayouts,
+    dividers,
+    handleGridLayoutChange,
+    handleDividerLabelChange,
+    handleDividerRemove,
+    renderGroup,
   ]);
 
   return (
@@ -449,52 +526,56 @@ function Home({ initialSettings }) {
           isOpen={searching}
           setSearching={setSearching}
         />
-        <div
-          id="information-widgets"
-          className={classNames(
-            "flex flex-row flex-wrap justify-between z-20",
-            headerStyles[headerStyle],
-            settings.cardBlur !== undefined &&
-              headerStyle === "boxed" &&
-              `backdrop-blur${settings.cardBlur.length ? "-" : ""}${settings.cardBlur}`,
-          )}
-        >
-          <div id="widgets-wrap" className={classNames("flex flex-row w-full flex-wrap justify-between gap-x-2")}>
-            {widgets && (
-              <>
-                {widgets
-                  .filter((widget) => !rightAlignedWidgets.includes(widget.type))
-                  .map((widget, i) => (
-                    <Widget
-                      key={i}
-                      widget={widget}
-                      style={{ header: headerStyle, isRightAligned: false, cardBlur: settings.cardBlur }}
-                    />
-                  ))}
-
-                <div
-                  id="information-widgets-right"
-                  className={classNames(
-                    "m-auto flex flex-wrap grow sm:basis-auto justify-between md:justify-end",
-                    "m-auto flex flex-wrap grow sm:basis-auto justify-between md:justify-end gap-x-2",
-                  )}
-                >
+        {!settings.enableEditMode && (
+          <div
+            id="information-widgets"
+            className={classNames(
+              "flex flex-row flex-wrap justify-between z-20",
+              headerStyles[headerStyle],
+              settings.cardBlur !== undefined &&
+                headerStyle === "boxed" &&
+                `backdrop-blur${settings.cardBlur.length ? "-" : ""}${settings.cardBlur}`,
+            )}
+          >
+            <div id="widgets-wrap" className={classNames("flex flex-row w-full flex-wrap justify-between gap-x-2")}>
+              {widgets && (
+                <>
                   {widgets
-                    .filter((widget) => rightAlignedWidgets.includes(widget.type))
+                    .filter((widget) => !rightAlignedWidgets.includes(widget.type))
                     .map((widget, i) => (
                       <Widget
                         key={i}
                         widget={widget}
-                        style={{ header: headerStyle, isRightAligned: true, cardBlur: settings.cardBlur }}
+                        style={{ header: headerStyle, isRightAligned: false, cardBlur: settings.cardBlur }}
                       />
                     ))}
-                </div>
-              </>
-            )}
+
+                  <div
+                    id="information-widgets-right"
+                    className={classNames(
+                      "m-auto flex flex-wrap grow sm:basis-auto justify-between md:justify-end",
+                      "m-auto flex flex-wrap grow sm:basis-auto justify-between md:justify-end gap-x-2",
+                    )}
+                  >
+                    {widgets
+                      .filter((widget) => rightAlignedWidgets.includes(widget.type))
+                      .map((widget, i) => (
+                        <Widget
+                          key={i}
+                          widget={widget}
+                          style={{ header: headerStyle, isRightAligned: true, cardBlur: settings.cardBlur }}
+                        />
+                      ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {servicesAndBookmarksGroups}
+
+        <EditToggle />
 
         <div id="footer" className="flex flex-col mt-auto p-8 w-full">
           <div id="style" className="flex w-full justify-end">
