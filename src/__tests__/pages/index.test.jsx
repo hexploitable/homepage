@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ColorContext } from "utils/contexts/color";
+import { EditModeContext } from "utils/contexts/edit-mode";
 import { SettingsContext } from "utils/contexts/settings";
 import { TabContext } from "utils/contexts/tab";
 import { ThemeContext } from "utils/contexts/theme";
@@ -236,13 +237,26 @@ async function renderIndex({
   const setSettings = vi.fn();
   const setActiveTab = vi.fn();
 
+  const editModeValue = {
+    editMode: false,
+    setEditMode: vi.fn(),
+    groupOrder: null,
+    setGroupOrder: vi.fn(),
+    gridLayouts: null,
+    setGridLayouts: vi.fn(),
+    dividers: [],
+    setDividers: vi.fn(),
+  };
+
   const renderResult = render(
     <ThemeContext.Provider value={{ theme, setTheme }}>
       <ColorContext.Provider value={{ color, setColor }}>
         <SettingsContext.Provider value={{ settings, setSettings }}>
-          <TabContext.Provider value={{ activeTab, setActiveTab }}>
-            <Wrapper initialSettings={initialSettings} fallback={fallback} />
-          </TabContext.Provider>
+          <EditModeContext.Provider value={editModeValue}>
+            <TabContext.Provider value={{ activeTab, setActiveTab }}>
+              <Wrapper initialSettings={initialSettings} fallback={fallback} />
+            </TabContext.Provider>
+          </EditModeContext.Provider>
         </SettingsContext.Provider>
       </ColorContext.Provider>
     </ThemeContext.Provider>,

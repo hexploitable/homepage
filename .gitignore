@@ -52,3 +52,5 @@ site*/
 
 # venv
 .venv/
+
+src/homepage_docs.egg-info
