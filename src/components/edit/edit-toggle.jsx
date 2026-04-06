@@ -2,7 +2,7 @@ import classNames from "classnames";
 import { DIVIDER_PREFIX } from "components/edit/section-divider";
 import { useContext } from "react";
 import { FiCheck, FiEdit2, FiMinus, FiRotateCcw } from "react-icons/fi";
-import { EditModeContext, saveDividers, saveGridLayouts } from "utils/contexts/edit-mode";
+import { EditModeContext } from "utils/contexts/edit-mode";
 import { SettingsContext } from "utils/contexts/settings";
 
 const COLS = { lg: 12, md: 8, sm: 4, xs: 2 };
@@ -27,22 +27,34 @@ export default function EditToggle() {
 
   const handleReset = () => {
     setGridLayouts(null);
-    saveGridLayouts(null);
     setDividers([]);
-    saveDividers([]);
   };
 
   const handleAddDivider = () => {
     const id = `${DIVIDER_PREFIX}${Date.now()}`;
     const newDividers = [...dividers, { id, label: "" }];
     setDividers(newDividers);
-    saveDividers(newDividers);
 
     if (gridLayouts) {
       const newLayouts = addDividerToLayouts(gridLayouts, id);
       setGridLayouts(newLayouts);
-      saveGridLayouts(newLayouts);
     }
+  };
+
+  const handleToggleEditMode = async () => {
+    if (editMode && gridLayouts) {
+      // Exiting edit mode — save grid layouts to yaml
+      try {
+        await fetch("/api/settings/layout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ grid: gridLayouts }),
+        });
+      } catch {
+        // ignore save errors
+      }
+    }
+    setEditMode((prev) => !prev);
   };
 
   return (
@@ -69,8 +81,8 @@ export default function EditToggle() {
       )}
       <button
         type="button"
-        onClick={() => setEditMode((prev) => !prev)}
-        title={editMode ? "Exit edit mode" : "Edit layout"}
+        onClick={handleToggleEditMode}
+        title={editMode ? "Save & exit edit mode" : "Edit layout"}
         className={classNames(
           "flex items-center justify-center w-10 h-10 rounded-full shadow-lg transition-all",
           editMode

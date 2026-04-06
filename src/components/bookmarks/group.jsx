@@ -1,10 +1,12 @@
 import { Disclosure, Transition } from "@headlessui/react";
 import classNames from "classnames";
 import List from "components/bookmarks/list";
+import EditableText from "components/edit/editable-text";
 import ErrorBoundary from "components/errorboundry";
 import ResolvedIcon from "components/resolvedicon";
-import { useEffect, useRef } from "react";
+import { useContext, useEffect, useRef } from "react";
 import { MdKeyboardArrowDown } from "react-icons/md";
+import { EditModeContext } from "utils/contexts/edit-mode";
 
 export default function BookmarksGroup({
   bookmarks,
@@ -15,6 +17,7 @@ export default function BookmarksGroup({
   maxGroupColumns,
 }) {
   const panel = useRef();
+  const { editMode } = useContext(EditModeContext);
 
   useEffect(() => {
     if (layout?.initiallyCollapsed ?? groupsInitiallyCollapsed) panel.current.style.height = `0`;
@@ -42,9 +45,13 @@ export default function BookmarksGroup({
                     <ResolvedIcon icon={layout.icon} />
                   </div>
                 )}
-                <h2 className="text-theme-800 dark:text-theme-300 text-xl font-medium bookmark-group-name">
-                  {bookmarks.name}
-                </h2>
+                <EditableText
+                  value={bookmarks.name}
+                  onSave={() => {}}
+                  editMode={editMode}
+                  tag="h2"
+                  className="text-theme-800 dark:text-theme-300 text-xl font-medium bookmark-group-name"
+                />
                 <MdKeyboardArrowDown
                   className={classNames(
                     disableCollapse ? "hidden" : "",

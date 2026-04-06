@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { render, screen } from "@testing-library/react";
+import { EditModeContext } from "utils/contexts/edit-mode";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("components/services/item", () => ({
@@ -15,16 +16,29 @@ vi.mock("components/services/item", () => ({
 
 import List from "./list";
 
+const editModeOff = {
+  editMode: false,
+  setEditMode: vi.fn(),
+  groupOrder: null,
+  setGroupOrder: vi.fn(),
+  gridLayouts: null,
+  setGridLayouts: vi.fn(),
+  dividers: [],
+  setDividers: vi.fn(),
+};
+
 describe("components/services/list", () => {
   it("renders items and passes the computed useEqualHeights value", () => {
     render(
-      <List
-        groupName="G"
-        services={[{ name: "A" }, { name: "B" }]}
-        layout={{ useEqualHeights: true }}
-        useEqualHeights={false}
-        header
-      />,
+      <EditModeContext.Provider value={editModeOff}>
+        <List
+          groupName="G"
+          services={[{ name: "A" }, { name: "B" }]}
+          layout={{ useEqualHeights: true }}
+          useEqualHeights={false}
+          header
+        />
+      </EditModeContext.Provider>,
     );
 
     const items = screen.getAllByTestId("service-item");

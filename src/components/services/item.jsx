@@ -1,6 +1,8 @@
 import classNames from "classnames";
+import EditableText from "components/edit/editable-text";
 import ResolvedIcon from "components/resolvedicon";
-import { useContext, useState } from "react";
+import { useCallback, useContext, useState } from "react";
+import { useSWRConfig } from "swr";
 import { SettingsContext } from "utils/contexts/settings";
 import Docker from "widgets/docker/component";
 import Kubernetes from "widgets/kubernetes/component";
@@ -13,13 +15,56 @@ import SiteMonitor from "./site-monitor";
 import Status from "./status";
 import Widget from "./widget";
 
-export default function Item({ service, groupName, useEqualHeights }) {
+export default function Item({ service, groupName, useEqualHeights, editMode }) {
   const hasLink = service.href && service.href !== "#";
   const { settings } = useContext(SettingsContext);
+  const { mutate } = useSWRConfig();
   const showStats = service.showStats === false ? false : settings.showStats;
   const statusStyle = service.statusStyle !== undefined ? service.statusStyle : settings.statusStyle;
   const [statsOpen, setStatsOpen] = useState(service.showStats);
   const [statsClosing, setStatsClosing] = useState(false);
+
+  const handleRename = useCallback(
+    async (newName) => {
+      try {
+        const res = await fetch("/api/services/rename", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "service", groupName, oldName: service.name, newName }),
+        });
+        if (res.ok) mutate("/api/services");
+      } catch {
+        // ignore
+      }
+    },
+    [groupName, service.name, mutate],
+  );
+
+  const handleDescriptionChange = useCallback(
+    async (newDesc) => {
+      try {
+        const res = await fetch("/api/services/rename", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "service",
+            groupName,
+            oldName: service.name,
+            newName: newDesc,
+            field: "description",
+          }),
+        });
+        if (res.ok) mutate("/api/services");
+      } catch {
+        // ignore
+      }
+    },
+    [groupName, service.name, mutate],
+  );
+
+  const handleLinkClick = (e) => {
+    if (editMode) e.preventDefault();
+  };
 
   // set stats to closed after 300ms
   const closeStats = () => {
@@ -48,6 +93,7 @@ export default function Item({ service, groupName, useEqualHeights }) {
                 href={service.href}
                 target={service.target ?? settings.target ?? "_blank"}
                 rel="noreferrer"
+                onClick={handleLinkClick}
                 className="shrink-0 flex items-center justify-center w-12 service-icon z-10"
                 aria-label={service.icon}
               >
@@ -64,22 +110,31 @@ export default function Item({ service, groupName, useEqualHeights }) {
               href={service.href}
               target={service.target ?? settings.target ?? "_blank"}
               rel="noreferrer"
+              onClick={handleLinkClick}
               className="flex-1 flex items-center justify-between rounded-r-md service-title-text"
             >
               <div className="flex-1 px-2 py-2 text-sm text-left z-10 service-name">
-                {service.name}
-                <p className="text-theme-500 dark:text-theme-300 text-xs font-light service-description">
-                  {service.description}
-                </p>
+                <EditableText value={service.name} onSave={handleRename} editMode={editMode} tag="div" />
+                <EditableText
+                  value={service.description || ""}
+                  onSave={handleDescriptionChange}
+                  editMode={editMode}
+                  tag="p"
+                  className="text-theme-500 dark:text-theme-300 text-xs font-light service-description"
+                />
               </div>
             </a>
           ) : (
             <div className="flex-1 flex items-center justify-between rounded-r-md service-title-text">
               <div className="flex-1 px-2 py-2 text-sm text-left z-10 service-name">
-                {service.name}
-                <p className="text-theme-500 dark:text-theme-300 text-xs font-light service-description">
-                  {service.description}
-                </p>
+                <EditableText value={service.name} onSave={handleRename} editMode={editMode} tag="div" />
+                <EditableText
+                  value={service.description || ""}
+                  onSave={handleDescriptionChange}
+                  editMode={editMode}
+                  tag="p"
+                  className="text-theme-500 dark:text-theme-300 text-xs font-light service-description"
+                />
               </div>
             </div>
           )}

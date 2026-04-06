@@ -3,6 +3,7 @@ import classNames from "classnames";
 import BookmarksGroup from "components/bookmarks/group";
 import EditToggle from "components/edit/edit-toggle";
 import GridLayoutWrapper, { generateDefaultLayouts, WIDGET_PREFIX } from "components/edit/grid-layout";
+import ServiceDndContext from "components/edit/service-dnd-context";
 import ErrorBoundary from "components/errorboundry";
 import QuickLaunch from "components/quicklaunch";
 import ServicesGroup from "components/services/group";
@@ -19,7 +20,7 @@ import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { BiError } from "react-icons/bi";
 import useSWR, { SWRConfig } from "swr";
 import { ColorContext } from "utils/contexts/color";
-import { EditModeContext, saveDividers, saveGridLayouts } from "utils/contexts/edit-mode";
+import { EditModeContext } from "utils/contexts/edit-mode";
 import { SettingsContext } from "utils/contexts/settings";
 import { TabContext } from "utils/contexts/tab";
 import { ThemeContext } from "utils/contexts/theme";
@@ -223,9 +224,12 @@ function Home({ initialSettings }) {
 
   useEffect(() => {
     setSettings(initialSettings);
-  }, [initialSettings, setSettings]);
+    if (initialSettings.gridLayouts && !gridLayouts) {
+      setGridLayouts(initialSettings.gridLayouts);
+    }
+  }, [initialSettings, setSettings, gridLayouts, setGridLayouts]);
 
-  const { data: services } = useSWR("/api/services");
+  const { data: services, mutate: mutateServices } = useSWR("/api/services");
   const { data: bookmarks } = useSWR("/api/bookmarks");
   const { data: widgets } = useSWR("/api/widgets");
 
@@ -330,7 +334,6 @@ function Home({ initialSettings }) {
     (allLayouts) => {
       if (editMode) {
         setGridLayouts(allLayouts);
-        saveGridLayouts(allLayouts);
       }
     },
     [editMode, setGridLayouts],
@@ -340,7 +343,6 @@ function Home({ initialSettings }) {
     (id, label) => {
       const updated = dividers.map((d) => (d.id === id ? { ...d, label } : d));
       setDividers(updated);
-      saveDividers(updated);
     },
     [dividers, setDividers],
   );
@@ -349,7 +351,6 @@ function Home({ initialSettings }) {
     (id) => {
       const updated = dividers.filter((d) => d.id !== id);
       setDividers(updated);
-      saveDividers(updated);
     },
     [dividers, setDividers],
   );
@@ -377,7 +378,7 @@ function Home({ initialSettings }) {
         id: `${WIDGET_PREFIX}${w.type}_${i}`,
         widget: w,
       }));
-      const layouts = gridLayouts || generateDefaultLayouts(allGroups, dividers, widgetItems);
+      const layouts = gridLayouts || settings.gridLayouts || generateDefaultLayouts(allGroups, dividers, widgetItems);
       return (
         <>
           {tabs.length > 0 && (
@@ -398,23 +399,25 @@ function Home({ initialSettings }) {
               </ul>
             </div>
           )}
-          <GridLayoutWrapper
-            groups={allGroups}
-            layouts={layouts}
-            onLayoutChange={handleGridLayoutChange}
-            editMode={editMode}
-            renderGroup={renderGroup}
-            dividers={dividers}
-            onDividerLabelChange={handleDividerLabelChange}
-            onDividerRemove={handleDividerRemove}
-            widgetItems={widgetItems}
-            renderWidget={(widget) => (
-              <Widget
-                widget={widget}
-                style={{ header: headerStyle, isRightAligned: false, cardBlur: settings.cardBlur }}
-              />
-            )}
-          />
+          <ServiceDndContext services={services} mutateServices={mutateServices}>
+            <GridLayoutWrapper
+              groups={allGroups}
+              layouts={layouts}
+              onLayoutChange={handleGridLayoutChange}
+              editMode={editMode}
+              renderGroup={renderGroup}
+              dividers={dividers}
+              onDividerLabelChange={handleDividerLabelChange}
+              onDividerRemove={handleDividerRemove}
+              widgetItems={widgetItems}
+              renderWidget={(widget) => (
+                <Widget
+                  widget={widget}
+                  style={{ header: headerStyle, isRightAligned: false, cardBlur: settings.cardBlur }}
+                />
+              )}
+            />
+          </ServiceDndContext>
         </>
       );
     }
@@ -480,6 +483,7 @@ function Home({ initialSettings }) {
     handleDividerLabelChange,
     handleDividerRemove,
     renderGroup,
+    mutateServices,
   ]);
 
   return (

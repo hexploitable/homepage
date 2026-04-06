@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { render, screen, waitFor } from "@testing-library/react";
+import { EditModeContext } from "utils/contexts/edit-mode";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@headlessui/react", async () => {
@@ -53,15 +54,28 @@ vi.mock("components/resolvedicon", () => ({
 
 import BookmarksGroup from "./group";
 
+const editModeOff = {
+  editMode: false,
+  setEditMode: vi.fn(),
+  groupOrder: null,
+  setGroupOrder: vi.fn(),
+  gridLayouts: null,
+  setGridLayouts: vi.fn(),
+  dividers: [],
+  setDividers: vi.fn(),
+};
+
 describe("components/bookmarks/group", () => {
   it("renders the group header and list", () => {
     render(
-      <BookmarksGroup
-        bookmarks={{ name: "Bookmarks", bookmarks: [{ name: "A" }] }}
-        layout={{ icon: "mdi:test" }}
-        disableCollapse={false}
-        groupsInitiallyCollapsed={false}
-      />,
+      <EditModeContext.Provider value={editModeOff}>
+        <BookmarksGroup
+          bookmarks={{ name: "Bookmarks", bookmarks: [{ name: "A" }] }}
+          layout={{ icon: "mdi:test" }}
+          disableCollapse={false}
+          groupsInitiallyCollapsed={false}
+        />
+      </EditModeContext.Provider>,
     );
 
     expect(screen.getByText("Bookmarks")).toBeInTheDocument();
@@ -71,11 +85,13 @@ describe("components/bookmarks/group", () => {
 
   it("sets the panel height to 0 when initially collapsed", async () => {
     render(
-      <BookmarksGroup
-        bookmarks={{ name: "Bookmarks", bookmarks: [] }}
-        layout={{ initiallyCollapsed: true }}
-        groupsInitiallyCollapsed={false}
-      />,
+      <EditModeContext.Provider value={editModeOff}>
+        <BookmarksGroup
+          bookmarks={{ name: "Bookmarks", bookmarks: [] }}
+          layout={{ initiallyCollapsed: true }}
+          groupsInitiallyCollapsed={false}
+        />
+      </EditModeContext.Provider>,
     );
 
     const panel = screen.getByTestId("disclosure-panel");

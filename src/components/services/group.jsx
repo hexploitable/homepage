@@ -1,9 +1,11 @@
 import { Disclosure, Transition } from "@headlessui/react";
 import classNames from "classnames";
+import EditableText from "components/edit/editable-text";
 import ResolvedIcon from "components/resolvedicon";
 import List from "components/services/list";
-import { useEffect, useRef } from "react";
+import { useCallback, useContext, useEffect, useRef } from "react";
 import { MdKeyboardArrowDown } from "react-icons/md";
+import { EditModeContext } from "utils/contexts/edit-mode";
 
 import { columnMap } from "../../utils/layout/columns";
 
@@ -17,6 +19,37 @@ export default function ServicesGroup({
   isSubgroup,
 }) {
   const panel = useRef();
+  const { editMode, gridLayouts } = useContext(EditModeContext);
+
+  const handleGroupRename = useCallback(
+    async (newName) => {
+      try {
+        const res = await fetch("/api/services/rename", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "group", groupName: group.name, newName }),
+        });
+        if (res.ok) {
+          // Update grid layout keys and save before reloading
+          if (gridLayouts) {
+            const updated = {};
+            Object.keys(gridLayouts).forEach((bp) => {
+              updated[bp] = gridLayouts[bp].map((item) => (item.i === group.name ? { ...item, i: newName } : item));
+            });
+            await fetch("/api/settings/layout", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ grid: updated }),
+            });
+          }
+          window.location.reload();
+        }
+      } catch {
+        // ignore
+      }
+    },
+    [group.name, gridLayouts],
+  );
 
   useEffect(() => {
     if (layout?.initiallyCollapsed ?? groupsInitiallyCollapsed) panel.current.style.height = `0`;
@@ -39,7 +72,7 @@ export default function ServicesGroup({
       <Disclosure defaultOpen={!(layout?.initiallyCollapsed ?? groupsInitiallyCollapsed)}>
         {({ open }) => (
           <>
-            {layout?.header !== false && (
+            {layout?.header !== false && !editMode && (
               <Disclosure.Button disabled={disableCollapse} className="flex w-full select-none items-center group">
                 {layout?.icon && (
                   <div className="shrink-0 mr-2 w-7 h-7 service-group-icon">
@@ -57,6 +90,22 @@ export default function ServicesGroup({
                   )}
                 />
               </Disclosure.Button>
+            )}
+            {layout?.header !== false && editMode && (
+              <div className="flex w-full select-none items-center">
+                {layout?.icon && (
+                  <div className="shrink-0 mr-2 w-7 h-7 service-group-icon">
+                    <ResolvedIcon icon={layout.icon} />
+                  </div>
+                )}
+                <EditableText
+                  value={group.name}
+                  onSave={handleGroupRename}
+                  editMode={editMode}
+                  tag="h2"
+                  className="flex text-theme-800 dark:text-theme-300 text-xl font-medium service-group-name"
+                />
+              </div>
             )}
             <Transition
               // Otherwise the transition group does display: none and cancels animation

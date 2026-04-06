@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { act, render, screen } from "@testing-library/react";
+import { EditModeContext } from "utils/contexts/edit-mode";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@headlessui/react", async () => {
@@ -71,13 +72,25 @@ describe("components/bookmarks/group transition hooks", () => {
   it("runs the Transition beforeEnter/beforeLeave height calculations and applies maxGroupColumns", async () => {
     vi.useFakeTimers();
 
+    const editModeOff = {
+      editMode: false,
+      setEditMode: vi.fn(),
+      groupOrder: null,
+      setGroupOrder: vi.fn(),
+      gridLayouts: null,
+      setGridLayouts: vi.fn(),
+      dividers: [],
+      setDividers: vi.fn(),
+    };
     render(
-      <BookmarksGroup
-        bookmarks={{ name: "Bookmarks", bookmarks: [] }}
-        layout={{ initiallyCollapsed: false }}
-        groupsInitiallyCollapsed={false}
-        maxGroupColumns="7"
-      />,
+      <EditModeContext.Provider value={editModeOff}>
+        <BookmarksGroup
+          bookmarks={{ name: "Bookmarks", bookmarks: [] }}
+          layout={{ initiallyCollapsed: false }}
+          groupsInitiallyCollapsed={false}
+          maxGroupColumns="7"
+        />
+      </EditModeContext.Provider>,
     );
 
     const wrapper = screen.getByText("Bookmarks").closest(".bookmark-group");

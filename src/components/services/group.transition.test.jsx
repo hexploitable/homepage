@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 
 import { act, render, screen } from "@testing-library/react";
+import { SWRConfig } from "swr";
+import { EditModeContext } from "utils/contexts/edit-mode";
+import { SettingsContext } from "utils/contexts/settings";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@headlessui/react", async () => {
@@ -69,12 +72,28 @@ describe("components/services/group transition hooks", () => {
   it("runs the Transition beforeEnter/beforeLeave height calculations", async () => {
     vi.useFakeTimers();
 
+    const editModeOff = {
+      editMode: false,
+      setEditMode: vi.fn(),
+      groupOrder: null,
+      setGroupOrder: vi.fn(),
+      gridLayouts: null,
+      setGridLayouts: vi.fn(),
+      dividers: [],
+      setDividers: vi.fn(),
+    };
     render(
-      <ServicesGroup
-        group={{ name: "Main", services: [], groups: [] }}
-        layout={{ initiallyCollapsed: false }}
-        groupsInitiallyCollapsed={false}
-      />,
+      <SWRConfig value={{ provider: () => new Map() }}>
+        <SettingsContext.Provider value={{ settings: {}, setSettings: vi.fn() }}>
+          <EditModeContext.Provider value={editModeOff}>
+            <ServicesGroup
+              group={{ name: "Main", services: [], groups: [] }}
+              layout={{ initiallyCollapsed: false }}
+              groupsInitiallyCollapsed={false}
+            />
+          </EditModeContext.Provider>
+        </SettingsContext.Provider>
+      </SWRConfig>,
     );
 
     const panel = screen.getByTestId("disclosure-panel");
