@@ -1,17 +1,11 @@
 name: Docker CI
 
 on:
-  schedule:
-    - cron: '20 0 * * *'
   push:
     branches:
-      - main
-      - feature/**
       - dev
     tags: [ 'v*.*.*' ]
-  pull_request:
-    branches: [ "dev" ]
-  merge_group:
+  workflow_dispatch:
 
 env:
   IMAGE_NAME: grantdouglas/gethomepage-hex
