@@ -105,7 +105,12 @@ export default function ServiceDndContext({ services, mutateServices, children }
     : null;
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCorners}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
       {children}
       <DragOverlay>
         {activeServiceData && (

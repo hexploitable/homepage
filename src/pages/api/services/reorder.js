@@ -20,7 +20,9 @@ export default async function handler(req, res) {
   const { sourceGroup, serviceName, destinationGroup, destinationIndex } = req.body;
 
   if (!sourceGroup || !serviceName || !destinationGroup || destinationIndex === undefined) {
-    return res.status(400).json({ error: "Missing required fields: sourceGroup, serviceName, destinationGroup, destinationIndex" });
+    return res
+      .status(400)
+      .json({ error: "Missing required fields: sourceGroup, serviceName, destinationGroup, destinationIndex" });
   }
 
   try {
@@ -63,7 +65,13 @@ export default async function handler(req, res) {
     const newContents = yaml.dump(services, { lineWidth: -1, noRefs: true });
     writeFileSync(servicesPath, newContents, "utf8");
 
-    logger.info("Service '%s' moved from '%s' to '%s' at index %d", serviceName, sourceGroup, destinationGroup, insertAt);
+    logger.info(
+      "Service '%s' moved from '%s' to '%s' at index %d",
+      serviceName,
+      sourceGroup,
+      destinationGroup,
+      insertAt,
+    );
     return res.status(200).json({ success: true });
   } catch (e) {
     logger.error("Failed to reorder service: %s", e.message);

@@ -16,7 +16,7 @@ import dynamic from "next/dynamic";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import Script from "next/script";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { BiError } from "react-icons/bi";
 import useSWR, { SWRConfig } from "swr";
 import { ColorContext } from "utils/contexts/color";
@@ -330,8 +330,13 @@ function Home({ initialSettings }) {
     [settings, settings.layout],
   );
 
+  const gridInitialized = useRef(false);
   const handleGridLayoutChange = useCallback(
     (allLayouts) => {
+      if (!gridInitialized.current) {
+        gridInitialized.current = true;
+        return;
+      }
       if (editMode) {
         setGridLayouts(allLayouts);
       }
