@@ -123,19 +123,12 @@ export default function GridLayoutWrapper({
 
   const layoutKeys = useMemo(() => {
     if (!layouts?.lg) {
-      return [
-        ...widgetItems.map((w) => w.id),
-        ...groups.map((g) => g.name),
-        ...dividers.map((d) => d.id),
-      ];
+      return [...widgetItems.map((w) => w.id), ...groups.map((g) => g.name), ...dividers.map((d) => d.id)];
     }
     return layouts.lg.map((item) => item.i);
   }, [layouts, groups, dividers, widgetItems]);
 
-  const handleLayoutChange = useCallback(
-    (_currentLayout, allLayouts) => onLayoutChange(allLayouts),
-    [onLayoutChange],
-  );
+  const handleLayoutChange = useCallback((_currentLayout, allLayouts) => onLayoutChange(allLayouts), [onLayoutChange]);
 
   return (
     <div ref={containerRef} className={classNames("m-4 sm:m-8 sm:mt-4 mb-2", editMode && "edit-grid-active")}>

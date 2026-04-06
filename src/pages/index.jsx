@@ -409,7 +409,10 @@ function Home({ initialSettings }) {
             onDividerRemove={handleDividerRemove}
             widgetItems={widgetItems}
             renderWidget={(widget) => (
-              <Widget widget={widget} style={{ header: headerStyle, isRightAligned: false, cardBlur: settings.cardBlur }} />
+              <Widget
+                widget={widget}
+                style={{ header: headerStyle, isRightAligned: false, cardBlur: settings.cardBlur }}
+              />
             )}
           />
         </>

@@ -1,7 +1,7 @@
 import classNames from "classnames";
+import { DIVIDER_PREFIX } from "components/edit/section-divider";
 import { useContext } from "react";
 import { FiCheck, FiEdit2, FiMinus, FiRotateCcw } from "react-icons/fi";
-import { DIVIDER_PREFIX } from "components/edit/section-divider";
 import { EditModeContext, saveDividers, saveGridLayouts } from "utils/contexts/edit-mode";
 import { SettingsContext } from "utils/contexts/settings";
 
