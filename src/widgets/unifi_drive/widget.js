@@ -8,6 +8,12 @@ const widget = {
     storage: {
       endpoint: "v1/systems/storage?type=detail",
     },
+    drives: {
+      endpoint: "v1/drives",
+    },
+    backups: {
+      endpoint: "v1/remote-backup/tasks",
+    },
   },
 };
 

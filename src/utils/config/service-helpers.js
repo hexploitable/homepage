@@ -325,6 +325,15 @@ export function cleanServiceGroups(groups) {
           // uptimekuma
           showMonitors,
 
+          // cloudflared
+          showRoutes,
+
+          // portainer
+          showContainers,
+
+          // unifi_drive
+          showDetails,
+
           // frigate
           enableRecentEvents,
 
@@ -564,6 +573,15 @@ export function cleanServiceGroups(groups) {
         }
         if (type === "uptimekuma") {
           if (showMonitors !== undefined) widget.showMonitors = !!JSON.parse(showMonitors);
+        }
+        if (type === "cloudflared") {
+          if (showRoutes !== undefined) widget.showRoutes = !!JSON.parse(showRoutes);
+        }
+        if (type === "portainer") {
+          if (showContainers !== undefined) widget.showContainers = !!JSON.parse(showContainers);
+        }
+        if (type === "unifi_drive") {
+          if (showDetails !== undefined) widget.showDetails = !!JSON.parse(showDetails);
         }
         if (type === "tracearr") {
           if (view !== undefined) widget.view = view;

@@ -19,6 +19,17 @@ widget:
   password: your_password
 ```
 
+To show storage pools and individual disk details (health, temperature, RAID level), set `showDetails` to `true`:
+
+```yaml
+widget:
+  type: unifi_drive
+  url: https://unifi.host.or.ip
+  username: your_username
+  password: your_password
+  showDetails: true
+```
+
 !!! tip
 
     If you enter incorrect credentials and receive an "API Error", you may need to recreate the container or restart the service to clear the cache.

@@ -20,3 +20,14 @@ widget:
   kubernetes: true # optional, defaults to false
   key: ptr_accesskeyaccesskeyaccesskeyaccesskey
 ```
+
+To show individual containers with their status, set `showContainers` to `true` (Docker mode only):
+
+```yaml
+widget:
+  type: portainer
+  url: https://portainer.host.or.ip:9443
+  env: 1
+  key: ptr_accesskeyaccesskeyaccesskeyaccesskey
+  showContainers: true
+```

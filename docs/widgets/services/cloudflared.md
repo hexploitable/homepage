@@ -16,3 +16,14 @@ widget:
   tunnelid: tunnelid # found in tunnels dashboard under the tunnel name
   key: cloudflareapitoken # api token with `Account.Cloudflare Tunnel:Read` https://dash.cloudflare.com/profile/api-tokens
 ```
+
+To show the tunnel's ingress routes (hostnames and their backend services), set `showRoutes` to `true`:
+
+```yaml
+widget:
+  type: cloudflared
+  accountid: accountid
+  tunnelid: tunnelid
+  key: cloudflareapitoken
+  showRoutes: true
+```
