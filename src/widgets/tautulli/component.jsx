@@ -156,59 +156,17 @@ export default function Component({ service }) {
   const showEpisodeNumber = !!service.widget?.showEpisodeNumber; // default is false
   const showArtwork = service.widget?.showArtwork !== false; // default is true
 
-  if (activityError || (activityData && Object.keys(activityData.response.data).length === 0)) {
-    return <Container service={service} error={activityError ?? { message: t("tautulli.plex_connection_error") }} />;
-  }
-
-  if (!activityData) {
-    return (
-      <div className="flex flex-col pb-1 mx-1">
-        <div className="text-theme-700 dark:text-theme-200 text-xs relative h-5 w-full rounded-md bg-theme-200/50 dark:bg-theme-900/20 mt-1">
-          <span className="absolute left-2 text-xs mt-[2px]">-</span>
-        </div>
-        {expandOneStreamToTwoRows && (
-          <div className="text-theme-700 dark:text-theme-200 text-xs relative h-5 w-full rounded-md bg-theme-200/50 dark:bg-theme-900/20 mt-1">
-            <span className="absolute left-2 text-xs mt-[2px]">-</span>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  const playing = activityData.response.data.sessions.sort((a, b) => {
-    if (a.view_offset > b.view_offset) {
-      return 1;
-    }
-    if (a.view_offset < b.view_offset) {
-      return -1;
-    }
-    return 0;
-  });
-
-  if (playing.length === 0) {
-    return (
-      <div className="flex flex-col pb-1 mx-1">
-        <div className="text-theme-700 dark:text-theme-200 text-xs relative h-5 w-full rounded-md bg-theme-200/50 dark:bg-theme-900/20 mt-1">
-          <span className="absolute left-2 text-xs mt-[2px]">{t("tautulli.no_active")}</span>
-        </div>
-        {expandOneStreamToTwoRows && (
-          <div className="text-theme-700 dark:text-theme-200 text-xs relative h-5 w-full rounded-md bg-theme-200/50 dark:bg-theme-900/20 mt-1">
-            <span className="absolute left-2 text-xs mt-[2px]">-</span>
-          </div>
-        )}
-      </div>
-    );
-  }
-
   const containerRef = useRef(null);
+
+  const playing =
+    activityData?.response?.data?.sessions?.sort((a, b) => a.view_offset - b.view_offset) ?? [];
   const artworkUrl = showArtwork && playing.length > 0 ? getArtworkUrl(widget, playing[0]) : null;
 
   useEffect(() => {
-    if (!artworkUrl || !containerRef.current) return;
+    if (!artworkUrl || !containerRef.current) return undefined;
     const card = containerRef.current.closest(".service-card");
-    if (!card) return;
+    if (!card) return undefined;
 
-    // Add background image
     const overlay = document.createElement("div");
     overlay.className = "tautulli-artwork-bg";
     overlay.style.cssText = `
@@ -223,6 +181,40 @@ export default function Component({ service }) {
       overlay.remove();
     };
   }, [artworkUrl]);
+
+  if (activityError || (activityData && Object.keys(activityData?.response?.data ?? {}).length === 0)) {
+    return <Container service={service} error={activityError ?? { message: t("tautulli.plex_connection_error") }} />;
+  }
+
+  if (!activityData) {
+    return (
+      <div ref={containerRef} className="flex flex-col pb-1 mx-1">
+        <div className="text-theme-700 dark:text-theme-200 text-xs relative h-5 w-full rounded-md bg-theme-200/50 dark:bg-theme-900/20 mt-1">
+          <span className="absolute left-2 text-xs mt-[2px]">-</span>
+        </div>
+        {expandOneStreamToTwoRows && (
+          <div className="text-theme-700 dark:text-theme-200 text-xs relative h-5 w-full rounded-md bg-theme-200/50 dark:bg-theme-900/20 mt-1">
+            <span className="absolute left-2 text-xs mt-[2px]">-</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (playing.length === 0) {
+    return (
+      <div ref={containerRef} className="flex flex-col pb-1 mx-1">
+        <div className="text-theme-700 dark:text-theme-200 text-xs relative h-5 w-full rounded-md bg-theme-200/50 dark:bg-theme-900/20 mt-1">
+          <span className="absolute left-2 text-xs mt-[2px]">{t("tautulli.no_active")}</span>
+        </div>
+        {expandOneStreamToTwoRows && (
+          <div className="text-theme-700 dark:text-theme-200 text-xs relative h-5 w-full rounded-md bg-theme-200/50 dark:bg-theme-900/20 mt-1">
+            <span className="absolute left-2 text-xs mt-[2px]">-</span>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   if (expandOneStreamToTwoRows && playing.length === 1) {
     const session = playing[0];

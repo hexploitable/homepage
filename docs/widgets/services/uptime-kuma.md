@@ -15,3 +15,13 @@ widget:
   url: http://uptimekuma.host.or.ip:port
   slug: statuspageslug
 ```
+
+To show individual monitored sites with their status and uptime percentage, set `showMonitors` to `true`:
+
+```yaml
+widget:
+  type: uptimekuma
+  url: http://uptimekuma.host.or.ip:port
+  slug: statuspageslug
+  showMonitors: true
+```

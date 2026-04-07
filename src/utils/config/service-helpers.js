@@ -322,6 +322,9 @@ export function cleanServiceGroups(groups) {
           // tautulli
           showArtwork,
 
+          // uptimekuma
+          showMonitors,
+
           // frigate
           enableRecentEvents,
 
@@ -558,6 +561,9 @@ export function cleanServiceGroups(groups) {
         }
         if (type === "tautulli") {
           if (showArtwork !== undefined) widget.showArtwork = JSON.parse(showArtwork);
+        }
+        if (type === "uptimekuma") {
+          if (showMonitors !== undefined) widget.showMonitors = !!JSON.parse(showMonitors);
         }
         if (type === "tracearr") {
           if (view !== undefined) widget.view = view;
