@@ -1,9 +1,11 @@
 /* eslint-disable camelcase */
 import Container from "components/services/widget/container";
 import { useTranslation } from "next-i18next";
+import { useEffect, useRef } from "react";
 import { BsCpu, BsFillCpuFill, BsFillPlayFill, BsPauseFill } from "react-icons/bs";
 import { MdOutlineSmartDisplay, MdSmartDisplay } from "react-icons/md";
 
+import { formatProxyUrl } from "utils/proxy/api-helpers";
 import useWidgetAPI from "utils/proxy/use-widget-api";
 
 function millisecondsToTime(milliseconds) {
@@ -39,6 +41,29 @@ function generateStreamTitle(session, enableUser, showEpisodeNumber) {
   return enableUser ? `${stream_title} (${friendly_name})` : stream_title;
 }
 
+function getArtworkUrl(widget, session) {
+  const thumb = session.art || session.thumb || session.grandparent_thumb;
+  if (!thumb) return null;
+  return formatProxyUrl(widget, "pms_image_proxy", { img: thumb, width: 300, height: 200 });
+}
+
+function DecisionIcons({ video_decision, audio_decision }) {
+  return (
+    <>
+      {video_decision === "direct play" && audio_decision === "direct play" && (
+        <MdSmartDisplay className="opacity-50" />
+      )}
+      {video_decision === "copy" && audio_decision === "copy" && <MdOutlineSmartDisplay className="opacity-50" />}
+      {video_decision !== "copy" &&
+        video_decision !== "direct play" &&
+        (audio_decision !== "copy" || audio_decision !== "direct play") && <BsFillCpuFill className="opacity-50" />}
+      {(video_decision === "copy" || video_decision === "direct play") &&
+        audio_decision !== "copy" &&
+        audio_decision !== "direct play" && <BsCpu className="opacity-50" />}
+    </>
+  );
+}
+
 function SingleSessionEntry({ session, enableUser, showEpisodeNumber }) {
   const { duration, view_offset, progress_percent, state, video_decision, audio_decision } = session;
 
@@ -53,16 +78,7 @@ function SingleSessionEntry({ session, enableUser, showEpisodeNumber }) {
           </div>
         </div>
         <div className="self-center text-xs flex justify-end mr-1.5 pl-1">
-          {video_decision === "direct play" && audio_decision === "direct play" && (
-            <MdSmartDisplay className="opacity-50" />
-          )}
-          {video_decision === "copy" && audio_decision === "copy" && <MdOutlineSmartDisplay className="opacity-50" />}
-          {video_decision !== "copy" &&
-            video_decision !== "direct play" &&
-            (audio_decision !== "copy" || audio_decision !== "direct play") && <BsFillCpuFill className="opacity-50" />}
-          {(video_decision === "copy" || video_decision === "direct play") &&
-            audio_decision !== "copy" &&
-            audio_decision !== "direct play" && <BsCpu className="opacity-50" />}
+          <DecisionIcons video_decision={video_decision} audio_decision={audio_decision} />
         </div>
       </div>
 
@@ -119,16 +135,7 @@ function SessionEntry({ session, enableUser, showEpisodeNumber }) {
         </div>
       </div>
       <div className="self-center text-xs flex justify-end mr-1.5 pl-1 z-10">
-        {video_decision === "direct play" && audio_decision === "direct play" && (
-          <MdSmartDisplay className="opacity-50" />
-        )}
-        {video_decision === "copy" && audio_decision === "copy" && <MdOutlineSmartDisplay className="opacity-50" />}
-        {video_decision !== "copy" &&
-          video_decision !== "direct play" &&
-          (audio_decision !== "copy" || audio_decision !== "direct play") && <BsFillCpuFill className="opacity-50" />}
-        {(video_decision === "copy" || video_decision === "direct play") &&
-          audio_decision !== "copy" &&
-          audio_decision !== "direct play" && <BsCpu className="opacity-50" />}
+        <DecisionIcons video_decision={video_decision} audio_decision={audio_decision} />
       </div>
       <div className="self-center text-xs flex justify-end mr-2 z-10">{millisecondsToString(view_offset)}</div>
     </div>
@@ -147,6 +154,7 @@ export default function Component({ service }) {
   const enableUser = !!service.widget?.enableUser; // default is false
   const expandOneStreamToTwoRows = service.widget?.expandOneStreamToTwoRows !== false; // default is true
   const showEpisodeNumber = !!service.widget?.showEpisodeNumber; // default is false
+  const showArtwork = service.widget?.showArtwork !== false; // default is true
 
   if (activityError || (activityData && Object.keys(activityData.response.data).length === 0)) {
     return <Container service={service} error={activityError ?? { message: t("tautulli.plex_connection_error") }} />;
@@ -192,24 +200,43 @@ export default function Component({ service }) {
     );
   }
 
+  const containerRef = useRef(null);
+  const artworkUrl = showArtwork && playing.length > 0 ? getArtworkUrl(widget, playing[0]) : null;
+
+  useEffect(() => {
+    if (!artworkUrl || !containerRef.current) return;
+    const card = containerRef.current.closest(".service-card");
+    if (!card) return;
+
+    // Add background image
+    const overlay = document.createElement("div");
+    overlay.className = "tautulli-artwork-bg";
+    overlay.style.cssText = `
+      position: absolute; inset: 0; z-index: 0;
+      background-image: url(${artworkUrl});
+      background-size: cover; background-position: center;
+      opacity: 0.15;
+    `;
+    card.insertBefore(overlay, card.firstChild);
+
+    return () => {
+      overlay.remove();
+    };
+  }, [artworkUrl]);
+
   if (expandOneStreamToTwoRows && playing.length === 1) {
     const session = playing[0];
     return (
-      <div className="flex flex-col pb-1 mx-1">
+      <div ref={containerRef} className="flex flex-col pb-1 mx-1">
         <SingleSessionEntry session={session} enableUser={enableUser} showEpisodeNumber={showEpisodeNumber} />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col pb-1 mx-1">
+    <div ref={containerRef} className="flex flex-col pb-1 mx-1">
       {playing.map((session) => (
-        <SessionEntry
-          key={session.session_key}
-          session={session}
-          enableUser={enableUser}
-          showEpisodeNumber={showEpisodeNumber}
-        />
+        <SessionEntry key={session.session_key} session={session} enableUser={enableUser} showEpisodeNumber={showEpisodeNumber} />
       ))}
     </div>
   );

@@ -17,4 +17,5 @@ widget:
   enableUser: true # optional, defaults to false
   showEpisodeNumber: true # optional, defaults to false
   expandOneStreamToTwoRows: false # optional, defaults to true
+  showArtwork: true # optional, defaults to true, shows media artwork thumbnail
 ```

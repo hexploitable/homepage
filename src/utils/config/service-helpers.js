@@ -319,6 +319,9 @@ export function cleanServiceGroups(groups) {
           expandOneStreamToTwoRows,
           showEpisodeNumber,
 
+          // tautulli
+          showArtwork,
+
           // frigate
           enableRecentEvents,
 
@@ -552,6 +555,9 @@ export function cleanServiceGroups(groups) {
             widget.expandOneStreamToTwoRows = !!JSON.parse(expandOneStreamToTwoRows);
           if (showEpisodeNumber !== undefined) widget.showEpisodeNumber = !!JSON.parse(showEpisodeNumber);
           if (enableUser !== undefined) widget.enableUser = !!JSON.parse(enableUser);
+        }
+        if (type === "tautulli") {
+          if (showArtwork !== undefined) widget.showArtwork = JSON.parse(showArtwork);
         }
         if (type === "tracearr") {
           if (view !== undefined) widget.view = view;

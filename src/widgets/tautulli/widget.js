@@ -1,12 +1,16 @@
-import genericProxyHandler from "utils/proxy/handlers/generic";
+import tautulliProxyHandler from "widgets/tautulli/proxy";
 
 const widget = {
   api: "{url}/api/v2?apikey={key}&cmd={endpoint}",
-  proxyHandler: genericProxyHandler,
+  proxyHandler: tautulliProxyHandler,
 
   mappings: {
     get_activity: {
       endpoint: "get_activity",
+    },
+    pms_image_proxy: {
+      endpoint: "pms_image_proxy",
+      params: ["img", "width", "height"],
     },
   },
 };
