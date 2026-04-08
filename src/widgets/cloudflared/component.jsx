@@ -4,10 +4,13 @@ import Container from "components/services/widget/container";
 import useWidgetAPI from "utils/proxy/use-widget-api";
 
 function IngressRow({ hostname, service: svc }) {
+  const url = `https://${hostname}`;
   return (
     <div className="flex flex-row text-theme-700 dark:text-theme-200 items-center text-xs relative h-5 w-full rounded-md bg-theme-200/50 dark:bg-theme-900/20 mt-1">
       <div className="text-xs z-10 self-center ml-2 relative h-4 grow mr-2">
-        <div className="absolute w-full whitespace-nowrap text-ellipsis overflow-hidden text-left">{hostname}</div>
+        <div className="absolute w-full whitespace-nowrap text-ellipsis overflow-hidden text-left">
+          <a href={url} target="_blank" rel="noopener noreferrer" className="hover:underline">{hostname}</a>
+        </div>
       </div>
       <div className="self-center text-xs flex justify-end mr-1.5 pl-1 z-10">
         <span className="text-theme-500 dark:text-theme-300">{svc}</span>

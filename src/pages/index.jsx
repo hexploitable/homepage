@@ -18,6 +18,7 @@ import { useRouter } from "next/router";
 import Script from "next/script";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { BiError } from "react-icons/bi";
+import { FiPause, FiPlay } from "react-icons/fi";
 import useSWR, { SWRConfig } from "swr";
 import { ColorContext } from "utils/contexts/color";
 import { EditModeContext } from "utils/contexts/edit-mode";
@@ -213,6 +214,21 @@ function migrateGridLayouts(data) {
   return data;
 }
 
+const ROTATION_UNITS = { ms: 1, s: 1000, m: 60_000, h: 3_600_000 };
+const MIN_ROTATION_MS = 1000;
+
+function parseRotationInterval(value) {
+  if (value == null || value === false || value === "") return 0;
+  if (typeof value === "number") return Math.max(value * 1000, MIN_ROTATION_MS);
+  const str = String(value).trim().toLowerCase();
+  const match = str.match(/^(\d+(?:\.\d+)?)\s*(ms|s|m|h)?$/);
+  if (!match) return 0;
+  const num = parseFloat(match[1]);
+  const unit = match[2] || "s";
+  const ms = num * (ROTATION_UNITS[unit] || 1000);
+  return ms >= MIN_ROTATION_MS ? ms : 0;
+}
+
 function getAllServices(services) {
   function getServices(group) {
     let nestedServices = [...group.services];
@@ -270,6 +286,7 @@ function Home({ initialSettings }) {
 
   const [searching, setSearching] = useState(false);
   const [searchString, setSearchString] = useState("");
+  const [rotationPaused, setRotationPaused] = useState(false);
   const headerStyle = settings?.headerStyle || "underlined";
 
   useEffect(() => {
@@ -317,6 +334,27 @@ function Home({ initialSettings }) {
   });
 
   const activeTabKey = tabs.length > 0 && activeTab ? activeTab : DEFAULT_TAB_KEY;
+
+  // Tab auto-rotation
+  const rotationMs = parseRotationInterval(settings.tabRotation);
+  const rotationEnabled = rotationMs > 0 && tabs.length > 1;
+
+  useEffect(() => {
+    if (!rotationEnabled || rotationPaused) return undefined;
+
+    const encodedTabs = tabs.map(slugifyAndEncode);
+
+    const interval = setInterval(() => {
+      setActiveTab((current) => {
+        const idx = encodedTabs.indexOf(current);
+        const next = encodedTabs[(idx + 1) % encodedTabs.length];
+        window.location.hash = `#${next}`;
+        return next;
+      });
+    }, rotationMs);
+
+    return () => clearInterval(interval);
+  }, [rotationEnabled, rotationPaused, rotationMs, tabs, setActiveTab]);
 
   const renderGroup = useCallback(
     (group) => {
@@ -432,28 +470,42 @@ function Home({ initialSettings }) {
                 {tabs.map((tab) => (
                   <Tab key={tab} tab={tab} />
                 ))}
+                {rotationEnabled && (
+                  <li role="presentation" className="flex items-center px-1">
+                    <button
+                      type="button"
+                      onClick={() => setRotationPaused((p) => !p)}
+                      title={rotationPaused ? "Resume rotation" : "Pause rotation"}
+                      className="p-1.5 rounded-md text-theme-700 dark:text-theme-200 hover:bg-theme-100/20 dark:hover:bg-white/5 transition-colors"
+                    >
+                      {rotationPaused ? <FiPlay className="w-3.5 h-3.5" /> : <FiPause className="w-3.5 h-3.5" />}
+                    </button>
+                  </li>
+                )}
               </ul>
             </div>
           )}
-          <ServiceDndContext services={services} mutateServices={mutateServices}>
-            <GridLayoutWrapper
-              groups={allGroups}
-              layouts={layouts}
-              onLayoutChange={handleGridLayoutChange}
-              editMode={editMode}
-              renderGroup={renderGroup}
-              dividers={activeTabDividers}
-              onDividerLabelChange={handleDividerLabelChange}
-              onDividerRemove={handleDividerRemove}
-              widgetItems={widgetItems}
-              renderWidget={(widget) => (
-                <Widget
-                  widget={widget}
-                  style={{ header: headerStyle, isRightAligned: false, cardBlur: settings.cardBlur }}
-                />
-              )}
-            />
-          </ServiceDndContext>
+          <div key={activeTab || "_all"} className={tabs.length > 1 ? "tab-crossfade" : undefined}>
+            <ServiceDndContext services={services} mutateServices={mutateServices}>
+              <GridLayoutWrapper
+                groups={allGroups}
+                layouts={layouts}
+                onLayoutChange={handleGridLayoutChange}
+                editMode={editMode}
+                renderGroup={renderGroup}
+                dividers={activeTabDividers}
+                onDividerLabelChange={handleDividerLabelChange}
+                onDividerRemove={handleDividerRemove}
+                widgetItems={widgetItems}
+                renderWidget={(widget) => (
+                  <Widget
+                    widget={widget}
+                    style={{ header: headerStyle, isRightAligned: false, cardBlur: settings.cardBlur }}
+                  />
+                )}
+              />
+            </ServiceDndContext>
+          </div>
         </>
       );
     }
@@ -476,24 +528,38 @@ function Home({ initialSettings }) {
               {tabs.map((tab) => (
                 <Tab key={tab} tab={tab} />
               ))}
+              {rotationEnabled && (
+                <li role="presentation" className="flex items-center px-1">
+                  <button
+                    type="button"
+                    onClick={() => setRotationPaused((p) => !p)}
+                    title={rotationPaused ? "Resume rotation" : "Pause rotation"}
+                    className="p-1.5 rounded-md text-theme-700 dark:text-theme-200 hover:bg-theme-100/20 dark:hover:bg-white/5 transition-colors"
+                  >
+                    {rotationPaused ? <FiPlay className="w-3.5 h-3.5" /> : <FiPause className="w-3.5 h-3.5" />}
+                  </button>
+                </li>
+              )}
             </ul>
           </div>
         )}
-        {layoutGroups.length > 0 && (
-          <div key="layoutGroups" id="layout-groups" className="flex flex-wrap m-4 sm:m-8 sm:mt-4 items-start mb-2">
-            {layoutGroups.map((group) => renderGroup(group))}
-          </div>
-        )}
-        {serviceGroups?.length > 0 && (
-          <div key="services" id="services" className="flex flex-wrap m-4 sm:m-8 sm:mt-4 items-start mb-2">
-            {serviceGroups.map((group) => renderGroup(group))}
-          </div>
-        )}
-        {bookmarkGroups?.length > 0 && (
-          <div key="bookmarks" id="bookmarks" className="flex flex-wrap m-4 sm:m-8 sm:mt-4 items-start mb-2">
-            {bookmarkGroups.map((group) => renderGroup(group))}
-          </div>
-        )}
+        <div key={activeTab || "_all"} className={tabs.length > 1 ? "tab-crossfade" : undefined}>
+          {layoutGroups.length > 0 && (
+            <div id="layout-groups" className="flex flex-wrap m-4 sm:m-8 sm:mt-4 items-start mb-2">
+              {layoutGroups.map((group) => renderGroup(group))}
+            </div>
+          )}
+          {serviceGroups?.length > 0 && (
+            <div id="services" className="flex flex-wrap m-4 sm:m-8 sm:mt-4 items-start mb-2">
+              {serviceGroups.map((group) => renderGroup(group))}
+            </div>
+          )}
+          {bookmarkGroups?.length > 0 && (
+            <div id="bookmarks" className="flex flex-wrap m-4 sm:m-8 sm:mt-4 items-start mb-2">
+              {bookmarkGroups.map((group) => renderGroup(group))}
+            </div>
+          )}
+        </div>
       </>
     );
   }, [
@@ -516,6 +582,8 @@ function Home({ initialSettings }) {
     gridLayouts,
     activeTabKey,
     activeTabDividers,
+    rotationEnabled,
+    rotationPaused,
     handleGridLayoutChange,
     handleDividerLabelChange,
     handleDividerRemove,
