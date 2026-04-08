@@ -201,6 +201,18 @@ const headerStyles = {
   boxedWidgets: "m-5 mb-0 sm:m-9 sm:mb-0 sm:mt-1",
 };
 
+const DEFAULT_TAB_KEY = "_default";
+
+function isOldLayoutFormat(data) {
+  return data && typeof data === "object" && ("lg" in data || "md" in data || "sm" in data || "xs" in data);
+}
+
+function migrateGridLayouts(data) {
+  if (!data) return null;
+  if (isOldLayoutFormat(data)) return { [DEFAULT_TAB_KEY]: data };
+  return data;
+}
+
 function getAllServices(services) {
   function getServices(group) {
     let nestedServices = [...group.services];
@@ -231,7 +243,7 @@ function Home({ initialSettings }) {
 
   useEffect(() => {
     if (savedGridLayouts && !gridLayouts) {
-      setGridLayouts(savedGridLayouts);
+      setGridLayouts(migrateGridLayouts(savedGridLayouts));
     }
   }, [savedGridLayouts, gridLayouts, setGridLayouts]);
   const { data: bookmarks } = useSWR("/api/bookmarks");
@@ -304,6 +316,8 @@ function Home({ initialSettings }) {
     }
   });
 
+  const activeTabKey = tabs.length > 0 && activeTab ? activeTab : DEFAULT_TAB_KEY;
+
   const renderGroup = useCallback(
     (group) => {
       if (group.services) {
@@ -334,34 +348,46 @@ function Home({ initialSettings }) {
     [settings, settings.layout],
   );
 
-  const gridInitialized = useRef(false);
+  const gridInitialized = useRef(null);
   const handleGridLayoutChange = useCallback(
     (allLayouts) => {
-      if (!gridInitialized.current) {
-        gridInitialized.current = true;
+      if (gridInitialized.current !== activeTabKey) {
+        gridInitialized.current = activeTabKey;
         return;
       }
       if (editMode) {
-        setGridLayouts(allLayouts);
+        setGridLayouts((prev) => ({ ...prev, [activeTabKey]: allLayouts }));
       }
     },
-    [editMode, setGridLayouts],
+    [editMode, setGridLayouts, activeTabKey],
   );
+
+  const activeTabDividers = useMemo(() => {
+    if (!dividers || !Array.isArray(dividers)) return dividers?.[activeTabKey] || [];
+    // Legacy flat array format — treat as default tab
+    return activeTabKey === DEFAULT_TAB_KEY ? dividers : [];
+  }, [dividers, activeTabKey]);
 
   const handleDividerLabelChange = useCallback(
     (id, label) => {
-      const updated = dividers.map((d) => (d.id === id ? { ...d, label } : d));
-      setDividers(updated);
+      const tabDividers = activeTabDividers.map((d) => (d.id === id ? { ...d, label } : d));
+      setDividers((prev) => {
+        const base = Array.isArray(prev) ? {} : prev || {};
+        return { ...base, [activeTabKey]: tabDividers };
+      });
     },
-    [dividers, setDividers],
+    [activeTabDividers, setDividers, activeTabKey],
   );
 
   const handleDividerRemove = useCallback(
     (id) => {
-      const updated = dividers.filter((d) => d.id !== id);
-      setDividers(updated);
+      const tabDividers = activeTabDividers.filter((d) => d.id !== id);
+      setDividers((prev) => {
+        const base = Array.isArray(prev) ? {} : prev || {};
+        return { ...base, [activeTabKey]: tabDividers };
+      });
     },
-    [dividers, setDividers],
+    [activeTabDividers, setDividers, activeTabKey],
   );
 
   const servicesAndBookmarksGroups = useMemo(() => {
@@ -387,7 +413,8 @@ function Home({ initialSettings }) {
         id: `${WIDGET_PREFIX}${w.type}_${i}`,
         widget: w,
       }));
-      const layouts = gridLayouts || generateDefaultLayouts(allGroups, dividers, widgetItems);
+      const tabLayout = gridLayouts?.[activeTabKey];
+      const layouts = tabLayout || generateDefaultLayouts(allGroups, activeTabDividers, widgetItems);
       return (
         <>
           {tabs.length > 0 && (
@@ -415,7 +442,7 @@ function Home({ initialSettings }) {
               onLayoutChange={handleGridLayoutChange}
               editMode={editMode}
               renderGroup={renderGroup}
-              dividers={dividers}
+              dividers={activeTabDividers}
               onDividerLabelChange={handleDividerLabelChange}
               onDividerRemove={handleDividerRemove}
               widgetItems={widgetItems}
@@ -487,7 +514,8 @@ function Home({ initialSettings }) {
     initialSettings.layout,
     editMode,
     gridLayouts,
-    dividers,
+    activeTabKey,
+    activeTabDividers,
     handleGridLayoutChange,
     handleDividerLabelChange,
     handleDividerRemove,

@@ -1,17 +1,19 @@
 import classNames from "classnames";
 import { DIVIDER_PREFIX } from "components/edit/section-divider";
-import { useContext } from "react";
+import { useContext, useMemo } from "react";
 import { FiCheck, FiEdit2, FiMinus, FiRotateCcw } from "react-icons/fi";
 import { EditModeContext } from "utils/contexts/edit-mode";
 import { SettingsContext } from "utils/contexts/settings";
+import { TabContext } from "utils/contexts/tab";
 
+const DEFAULT_TAB_KEY = "_default";
 const COLS = { lg: 12, md: 8, sm: 4, xs: 2 };
 
-function addDividerToLayouts(layouts, id) {
-  if (!layouts) return null;
+function addDividerToLayouts(tabLayout, id) {
+  if (!tabLayout) return null;
   const updated = {};
-  Object.keys(layouts).forEach((bp) => {
-    const items = layouts[bp] || [];
+  Object.keys(tabLayout).forEach((bp) => {
+    const items = tabLayout[bp] || [];
     const maxY = items.reduce((max, item) => Math.max(max, item.y + item.h), 0);
     const cols = COLS[bp] || 12;
     updated[bp] = [...items, { i: id, x: 0, y: maxY, w: cols, h: 1, minW: cols, maxW: cols, minH: 1, maxH: 1 }];
@@ -22,22 +24,37 @@ function addDividerToLayouts(layouts, id) {
 export default function EditToggle() {
   const { settings } = useContext(SettingsContext);
   const { editMode, setEditMode, gridLayouts, setGridLayouts, dividers, setDividers } = useContext(EditModeContext);
+  const { activeTab } = useContext(TabContext);
+
+  const tabs = useMemo(
+    () =>
+      Object.keys(settings.layout ?? {})
+        .map((groupName) => settings.layout[groupName]?.tab?.toString())
+        .filter(Boolean),
+    [settings.layout],
+  );
+
+  const activeTabKey = tabs.length > 0 && activeTab ? activeTab : DEFAULT_TAB_KEY;
 
   if (!settings.enableEditMode) return null;
 
   const handleReset = () => {
     setGridLayouts(null);
-    setDividers([]);
+    setDividers({});
   };
 
   const handleAddDivider = () => {
     const id = `${DIVIDER_PREFIX}${Date.now()}`;
-    const newDividers = [...dividers, { id, label: "" }];
-    setDividers(newDividers);
+    const tabDividers = Array.isArray(dividers) ? [] : dividers?.[activeTabKey] || [];
+    const newTabDividers = [...tabDividers, { id, label: "" }];
+    setDividers((prev) => {
+      const base = Array.isArray(prev) ? {} : prev || {};
+      return { ...base, [activeTabKey]: newTabDividers };
+    });
 
-    if (gridLayouts) {
-      const newLayouts = addDividerToLayouts(gridLayouts, id);
-      setGridLayouts(newLayouts);
+    if (gridLayouts?.[activeTabKey]) {
+      const newTabLayout = addDividerToLayouts(gridLayouts[activeTabKey], id);
+      setGridLayouts((prev) => ({ ...prev, [activeTabKey]: newTabLayout }));
     }
   };
 
